@@ -1,29 +1,43 @@
 <?php
-/* @Name:AlonePHP
-   @Author:Tom<tom@awaysoft.com>
-   @LastModify:2014-08-20
-   @Description:AlonePHP是一个单文件框架，适用于制作简单的小工具，支持网页及命令模式
-   @Copyright:本程序采用Apache 2.0授权协议
+/**
+ * @name AlonePHP
+ * @version 0.1
+ * @author Tom <tom@awaysoft.com>
+ * @date 2014-08-20
+ * @description AlonePHP是一个单文件框架，适用于制作简单的小工具，支持网页及命令模式
+ * @copyright Apache License, Version 2.0
 */
 define('ALONE_ROOT', dirname(__FILE__));
 
 
-/* 默认控制器 */
+/** 
+ * 默认控制器 
+ * Default Controller
+ */
 function IndexController() {
     template('Index');
 }
 
-/* 默认控制器模板 */
+/**
+ * 默认控制器模板 
+ * Default Controller Template
+ */
 function IndexTemplate($args) {
     echo '<meta charset="utf-8">欢迎使用AlonePHP框架';
 }
 
-/* 初始化函数，可以做权限验证，数据初始化等等 */
+/**
+ * 初始化函数，可以做权限验证，数据初始化等等
+ * Initiazation Function, you can use it to check author or others
+ */
 function init() {
 
 }
 
-/* 框架运行函数 */
+/**
+ * 框架运行函数 
+ * Framework run function
+ */
 function run() {    
     /* 初始化 */
     init();
@@ -43,9 +57,10 @@ function run() {
     controller($controller);
 }
 
-/* 模板输出接口函数
-    @name: string, 模板名称
-    @args: mixed, 传递到模板的参数，建议用关联数组
+/**
+ * @description 模板输出接口函数(Template function)
+ * @param string $name 模板名称/Template Name
+ * @param mixed  $args 传递到模板的参数，建议用关联数组/Template Args, better using relate array.
  */
 function template($name, $args = '') {
     $templateName = $name . 'Template';
@@ -56,8 +71,9 @@ function template($name, $args = '') {
     }
 }
 
-/* 控制器接口函数
-    @name: string, 控制器名称
+/**
+ * @description 控制器接口函数
+ * @param string $name 控制器名称/Controller Name
  */
 function controller($name) {
     $controllerName = $name . 'Controller';
@@ -68,15 +84,20 @@ function controller($name) {
     }
 }
 
-/*  程序打开参数个数 */
+/**
+ * @description 程序打开参数个数
+ * @return integer 返回程序的参数个数 The Number of Params
+ */
 function param_count() {
     global $argc;
     return $argc - 1;
 }
 
-/*  获取程序参数 
-    @index: integer, 参数的位置
-*/
+/**
+ * @description 获取程序参数 
+ * @param integer $index, 参数的位置(The position of params)
+ * @return string 返回第index个参数的值，The value of Params[$index];
+ */
 function param_get($index) {
     global $argc, $argv;
     if ($index > $argc) {
@@ -86,11 +107,12 @@ function param_get($index) {
     }
 }
 
-/*  GET方法
-    @name: string, GET参数
-    @filter: string, 过滤函数
-    @default: string, 默认值
-*/
+/**  GET方法
+ * @param string $name GET参数/The key of GET
+ * @param string $filter 过滤函数/Filter function
+ * @param string $default 默认值/Default Value
+ * @return string
+ */
 function get($name, $filter = 'htmlspecialchars', $default = '') {
     if (!isset($_GET[$name])) {
         $result = $default;
@@ -100,33 +122,45 @@ function get($name, $filter = 'htmlspecialchars', $default = '') {
     return $filter($result);
 }
 
-/*  POST方法
-    @name: string, GET参数
-    @filter: string, 过滤函数
-    @default: string, 默认值
-*/
+/**  POST方法
+ * @param string $name POST参数/The key of POST
+ * @param string $filter 过滤函数/Filter function
+ * @param string $default 默认值/Default Value
+ * @return string
+ */
 function post($name, $filter = 'htmlspecialchars', $default = '') {
-    $result = $_POST[$name];
-    if (!isset($result)) {
+    if (!isset($_POST[$name])) {
         $result = $default;
+    } else {
+        $result = $_POST[$name];
     }
     return $filter($result);
 }
 
-/* 默认输出错误信息函数 */
+/* 默认输出错误信息函数
+   Default Error Template
+*/
 function ErrorTemplate($args) {
     echo $args;
 }
 
-/* 运行框架 */
+/* 运行框架 
+   Run Framework
+*/
 run();
 
 /* 下面为可选函数区，可根据实际需求删减 */
+/* Options Functions, you can delete what you doesn't like */
 
-/*  SESSION操作函数 
-    @name: string, session参数
-    @value: mixed, 写入session的值，如果读取session,此参数请留空,如果要删除这个session的内容，
+/**
+ * SESSION操作函数 / The Operator function with session
+ * @param string $name key
+ * @param mixed $value 写入session的值，如果读取session,此参数请留空,如果要删除这个session的内容，
                 此参数请赋值为[delete],如果需要删除所有的session内容，此参数请赋值为[destroy]。
+                if you want to read session, you can leave it empty, else the value will
+                write to session,if you want to delete this key, you can leave it [delete],
+                if you want to delete all keys, you can leave it [destroy]
+ * @return mixed
 */
 function session($name, $value = null) {
     static $is_init = false;
@@ -147,9 +181,11 @@ function session($name, $value = null) {
 
 /**
  * 产生随机字串，可用来自动生成密码 默认长度6位 字母和数字混合
- * @len: integer, 长度
- * @type: string, 字串类型 0:字母,1:数字,2:大写字母,3:小写字母,4:中文,其它:大小写数字混合，但去除易混淆的字符
- * @add_chars: string, 额外字符
+ * Generate a random string, the length is six default
+ * @param integer $len 长度/length
+ * @param string $type 字串类型/char type 0:字母/letter,1:数字/number,2:大写字母/UpperLetter,3:小写字母/DownerLetter,4:中文/Chinese,其它/other:大小写数字混合/letter&number，但去除易混淆的字符/Donot have 0Oli etc.
+ * @param string $add_chars 额外字符/addtional chars
+ * @return string
  */
 function rand_string($len=6, $type = 5, $add_chars = '') {
     $str = '';
@@ -186,15 +222,16 @@ function rand_string($len=6, $type = 5, $add_chars = '') {
 
 /**
  * 生成随机验证码 默认长度4位 字母和数字混合
- * @img_type: string, 验证码图片类型 gif, jpeg, png
- * @width: integer, 验证码长度
- * @height: integer, 验证码高度
- * @len: integer, 长度
- * @font_size: float, 字体大小
- * @angle: float, 旋转角度
- * @type: string, 字串类型 0:字母,1:数字,2:大写字母,3:小写字母,4:中文,其它:大小写数字混合，但去除易混淆的字符
- * @add_chars: string, 额外字符
- * @return: 验证码内容存在session中，key是verify_code
+ * Generate a rand verify code, the length is 4 by default
+ * @param string $img 验证码图片类型/pic type gif, jpeg, png
+ * @param integer $width 验证码长度/pic width
+ * @param integer $height 验证码高度/pic height
+ * @param integer $len 长度/string length
+ * @param float $font_size 字体大小/Font size
+ * @param float $angle 旋转角度/Font Angle
+ * @param string $type 字串类型/string type 0:字母,1:数字,2:大写字母,3:小写字母,4:中文,其它:大小写数字混合，但去除易混淆的字符
+ * @param string $add_chars 额外字符/addtional chars
+ * @return string 验证码内容存在session中，key是verify_code/verify code is save in session, the session_key is verify_code
  */
 function verify_code($img_type = 'jpeg', $width = 60, $height = 24, $len = 4, $font_size = 15, $angle = 0, $type = 5, $add_chars = '') {
     $code = rand_string($len, $type, $add_chars);
