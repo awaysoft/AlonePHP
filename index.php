@@ -358,17 +358,6 @@ function curl_post($url, $post_data = array(), $header = array(), $timeout = 5) 
 	return $file_contents;
 }
 
-/* 获取header内容的长度 */
-function curl_get_content_length($str) {
-	$matches = array();
-	preg_match('/Content-Length:(.*?)\n/', $str, $matches);
-	$len = @trim(array_pop($matches));
-	if (!$len) {
-		$len = 0;
-	}
-	return (int) $len;
-}
-
 /* curl_get跳转用函数，以解决某些服务器CURLOPT_FOLLOWLOCATION不能用 */
 function curl_redir_exec($ch) {
 	static $curl_loops = 0;
@@ -380,10 +369,11 @@ function curl_redir_exec($ch) {
 	}
 	curl_setopt($ch, CURLOPT_HEADER, true);
 	$data = curl_exec($ch);
-/* 分离header和content */
-	$content_len = curl_get_content_length($data);
-	$header = substr($data, 0, strlen($data) - $content_len);
-	$data = substr($data, strlen($header));
+	
+	/* 分离header和content */
+	$header_len = strpos($data, "\n\n");
+	$header = substr($data, 0, $header_len);
+	$data = substr($data, $header_len);
 
 	$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 	if ($http_code == 301 || $http_code == 302) {
