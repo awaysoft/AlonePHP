@@ -371,9 +371,9 @@ function curl_redir_exec($ch) {
 	$data = curl_exec($ch);
 	
 	/* 分离header和content */
-	$header_len = strpos($data, "\n\n");
+	$header_len = strpos($data, "\r\n\r\n");
 	$header = substr($data, 0, $header_len);
-	$data = substr($data, $header_len);
+	$data = substr($data, $header_len+4);
 
 	$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 	if ($http_code == 301 || $http_code == 302) {
@@ -392,4 +392,36 @@ function curl_redir_exec($ch) {
 		$curl_loops = 0;
 		return $data;
 	}
+}
+
+/* curl_get_with_ip,用于ip解析错误或者需要指定ip的时候 */
+function curl_get_with_ip($url, $ip) {
+	$errstr = '';     
+    $errno = '';  
+	$url_array = parse_url($url);
+	if ($url_array === false) return false;
+	$host = $url_array['host'];
+	$port = isset($url_array['port']) ? $url_array['port'] : 80;
+
+    $fp = fsockopen ($ip, $port, $errno, $errstr, 90);  
+    if (!$fp) {     
+        return false;     
+    } else {     
+        $out = "GET {$url} HTTP/1.0\r\n";  
+        $out .= "Host:{$host}\r\n";     
+        $out .= "Connection: close\r\n\r\n";  
+        fputs ($fp, $out);     
+  		
+		$response = '';
+        while(($line = fread($fp, 4096))) {  
+           $response .= $line;  
+        }  
+        fclose( $fp );  
+  
+        //去掉Header头信息  
+        $pos = strpos($response, "\r\n\r\n");  
+        $response = substr($response, $pos + 4);  
+      
+        return $response;     
+    }  
 }
