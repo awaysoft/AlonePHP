@@ -401,14 +401,21 @@ function curl_redir_exec($ch) {
  * @return string|boolean 返回获取的内容，访问失败返回false
 */
 function curl_get_with_ip($url, $ip = '', $header = array()) {
+	/* 最大循环跳转次数 */
+	$loop_max_count = 5; 
+	static $loop_count = 0;
 	$errstr = '';
 	$errno = '';
     /* 解析URL */
 	$url_array = parse_url($url);
-	if ($url_array === false) return false;
+	if ($url_array === false) {
+		$loop_count = 0;
+		return false;
+	}
 	$host = $url_array['host'];
 	/* 域名解析失败则退出 */
 	if (!$host) {
+		$loop_count = 0;
 		return false;
 	}
 	/* 获取端口 */
@@ -420,6 +427,7 @@ function curl_get_with_ip($url, $ip = '', $header = array()) {
 
     $fp = fsockopen ($ip, $port, $errno, $errstr, 90);
     if (!$fp) {
+    	$loop_count = 0;
         return false;
     } else {
         $out = "GET {$url} HTTP/1.0\r\n";
@@ -436,10 +444,29 @@ function curl_get_with_ip($url, $ip = '', $header = array()) {
         }
         fclose( $fp );
 
-        //去掉Header头信息
+        //分离Header头信息
         $pos = strpos($response, "\r\n\r\n");
+        $header_content = substr($response, 0, $pos);
         $response = substr($response, $pos + 4);
 
+        if (preg_match("/HTTP\/\d\.\d (\d+) /", $header_content, $matches) !== 1) {
+        	$loop_count = 0;
+        	return false;
+        }
+
+        $http_status = $matches[1];
+        /* 如果是30x，就跳转 */
+        if ($http_status == 301 || $http_status == 302) {
+			if (preg_match("/Location:(.*?)\n/", $header_content, $matches) !== 1) {
+				$loop_count = 0;
+				return false;
+			}
+			$url = trim($matches[1]);
+			$loop_count ++;
+			return curl_get_with_ip($url, $ip, $header);
+		}
+
+		$loop_count = 0;
         return $response;
     }
 }
