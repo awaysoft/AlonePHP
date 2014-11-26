@@ -394,34 +394,53 @@ function curl_redir_exec($ch) {
 	}
 }
 
-/* curl_get_with_ip,用于ip解析错误或者需要指定ip的时候 */
-function curl_get_with_ip($url, $ip) {
-	$errstr = '';     
-    $errno = '';  
+/* curl_get_with_ip,用于ip解析错误或者需要指定ip的时候 
+ * @param string $url 远程地址
+ * @param string $ip 需要访问的ip
+ * @param array $header 需要添加的其它header参数
+ * @return string|boolean 返回获取的内容，访问失败返回false
+*/
+function curl_get_with_ip($url, $ip = '', $header = array()) {
+	$errstr = '';
+	$errno = '';
+    /* 解析URL */
 	$url_array = parse_url($url);
 	if ($url_array === false) return false;
 	$host = $url_array['host'];
+	/* 域名解析失败则退出 */
+	if (!$host) {
+		return false;
+	}
+	/* 获取端口 */
 	$port = isset($url_array['port']) ? $url_array['port'] : 80;
+	/* 获取ip */
+	if ($ip === '') {
+		$ip = gethostbyname($host);
+	}
 
-    $fp = fsockopen ($ip, $port, $errno, $errstr, 90);  
-    if (!$fp) {     
-        return false;     
-    } else {     
-        $out = "GET {$url} HTTP/1.0\r\n";  
-        $out .= "Host:{$host}\r\n";     
-        $out .= "Connection: close\r\n\r\n";  
-        fputs ($fp, $out);     
+    $fp = fsockopen ($ip, $port, $errno, $errstr, 90);
+    if (!$fp) {
+        return false;
+    } else {
+        $out = "GET {$url} HTTP/1.0\r\n";
+        $out .= "Host: {$host}\r\n";
+        foreach ($header as $key => $value) {
+        	$out .= $Key . ": " . $value . "\r\n";
+        }
+        $out .= "Connection: close\r\n\r\n";
+        fputs ($fp, $out);
   		
 		$response = '';
-        while(($line = fread($fp, 4096))) {  
-           $response .= $line;  
-        }  
-        fclose( $fp );  
-  
-        //去掉Header头信息  
-        $pos = strpos($response, "\r\n\r\n");  
-        $response = substr($response, $pos + 4);  
-      
-        return $response;     
-    }  
+        while(($line = fread($fp, 4096))) {
+           $response .= $line;
+        }
+        fclose( $fp );
+
+        //去掉Header头信息
+        $pos = strpos($response, "\r\n\r\n");
+        $response = substr($response, $pos + 4);
+
+        return $response;
+    }
 }
+
