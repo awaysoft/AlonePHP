@@ -369,11 +369,11 @@ function curl_redir_exec($ch) {
 	}
 	curl_setopt($ch, CURLOPT_HEADER, true);
 	$data = curl_exec($ch);
-	
+
 	/* 分离header和content */
 	$header_len = strpos($data, "\r\n\r\n");
 	$header = substr($data, 0, $header_len);
-	$data = substr($data, $header_len+4);
+	$data = substr($data, $header_len + 4);
 
 	$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 	if ($http_code == 301 || $http_code == 302) {
@@ -394,19 +394,31 @@ function curl_redir_exec($ch) {
 	}
 }
 
-/* curl_get_with_ip,用于ip解析错误或者需要指定ip的时候 
+/* http_get_with_ip,用于ip解析错误或者需要指定ip的时候以get方式获取数据
  * @param string $url 远程地址
  * @param string $ip 需要访问的ip
  * @param array $header 需要添加的其它header参数
  * @return string|boolean 返回获取的内容，访问失败返回false
-*/
-function curl_get_with_ip($url, $ip = '', $header = array()) {
+ */
+function http_get_with_ip($url, $ip = '', $header = array()) {
+	return curl_post_with_ip($url, null, $ip, $header);
+}
+
+/* http_post_with_ip,用于ip解析错误或者需要指定ip的时候以post方式获取数据
+ * @param string $url 远程地址
+ * @param array|null $post_data 以post方式提交数据，如果此参数为null，则使用get方式
+ * @param string $ip 需要访问的ip
+ * @param array $header 需要添加的其它header参数
+ * @return string|boolean 返回获取的内容，访问失败返回false
+ */
+function http_post_with_ip($url, $post_data = null, $ip = '', $header = array()) {
 	/* 最大循环跳转次数 */
-	$loop_max_count = 5; 
+	$loop_max_count = 5;
+
 	static $loop_count = 0;
 	$errstr = '';
 	$errno = '';
-    /* 解析URL */
+	/* 解析URL */
 	$url_array = parse_url($url);
 	if ($url_array === false) {
 		$loop_count = 0;
@@ -425,49 +437,67 @@ function curl_get_with_ip($url, $ip = '', $header = array()) {
 		$ip = gethostbyname($host);
 	}
 
-    $fp = fsockopen ($ip, $port, $errno, $errstr, 90);
-    if (!$fp) {
-    	$loop_count = 0;
-        return false;
-    } else {
-        $out = "GET {$url} HTTP/1.0\r\n";
-        $out .= "Host: {$host}\r\n";
-        foreach ($header as $key => $value) {
-        	$out .= $Key . ": " . $value . "\r\n";
-        }
-        $out .= "Connection: close\r\n\r\n";
-        fputs ($fp, $out);
-  		
+	$fp = fsockopen($ip, $port, $errno, $errstr, 90);
+	if (!$fp) {
+		$loop_count = 0;
+		return false;
+	} else {
+		$out = (is_array($post_data) ? "POST" : "GET") . " {$url} HTTP/1.0\r\n";
+		/* 最终的header数组 */
+		$header_result = array();
+		$header_result['Host'] = $host;
+		/* 处理post数据 */
+		if (is_array($post_data)) {
+			$post_values = array();
+			foreach ($post_data as $key => $value) {
+				array_push($post_values, urlencode($key) . "=" . urlencode($value));
+			}
+			$post_content = implode("&", $post_values);
+			$header_result['Content-type'] = "application/x-www-form-urlencoded";
+			$header_result['Content-length'] = strlen($post_content);
+		}
+		/* 设置默认的header */
+		$header_result['User-Agent'] = "Mozilla/5.0 (X11; Linux x86_64; rv:31.0) Gecko/20100101 Firefox/31.0";
+		$header_result = array_merge($header_result, $header);
+		/* 载入用户的header */
+		foreach ($header_result as $key => $value) {
+			$out .= $key . ": " . $value . "\r\n";
+		}
+		$out .= "Connection: close\r\n\r\n";
+		if (is_array($post_data)) {
+			$out .= $post_content;
+		}
+		fputs($fp, $out);
+
 		$response = '';
-        while(($line = fread($fp, 4096))) {
-           $response .= $line;
-        }
-        fclose( $fp );
+		while (($line = fread($fp, 4096))) {
+			$response .= $line;
+		}
+		fclose($fp);
 
-        //分离Header头信息
-        $pos = strpos($response, "\r\n\r\n");
-        $header_content = substr($response, 0, $pos);
-        $response = substr($response, $pos + 4);
+		//分离Header头信息
+		$pos = strpos($response, "\r\n\r\n");
+		$header_content = substr($response, 0, $pos);
+		$response = substr($response, $pos + 4);
 
-        if (preg_match("/HTTP\/\d\.\d (\d+) /", $header_content, $matches) !== 1) {
-        	$loop_count = 0;
-        	return false;
-        }
+		if (preg_match("/HTTP\/\d\.\d (\d+) /", $header_content, $matches) !== 1) {
+			$loop_count = 0;
+			return false;
+		}
 
-        $http_status = $matches[1];
-        /* 如果是30x，就跳转 */
-        if ($http_status == 301 || $http_status == 302) {
+		$http_status = $matches[1];
+		/* 如果是30x，就跳转 */
+		if ($http_status == 301 || $http_status == 302) {
 			if (preg_match("/Location:(.*?)\n/", $header_content, $matches) !== 1) {
 				$loop_count = 0;
 				return false;
 			}
 			$url = trim($matches[1]);
-			$loop_count ++;
-			return curl_get_with_ip($url, $ip, $header);
+			$loop_count++;
+			return curl_post_with_ip($url, $post_data, $ip, $header);
 		}
 
 		$loop_count = 0;
-        return $response;
-    }
+		return $response;
+	}
 }
-
