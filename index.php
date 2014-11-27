@@ -401,7 +401,7 @@ function curl_redir_exec($ch) {
  * @return string|boolean 返回获取的内容，访问失败返回false
  */
 function http_get_with_ip($url, $ip = '', $header = array()) {
-	return curl_post_with_ip($url, null, $ip, $header);
+	return http_post_with_ip($url, null, $ip, $header);
 }
 
 /* http_post_with_ip,用于ip解析错误或者需要指定ip的时候以post方式获取数据
@@ -494,7 +494,7 @@ function http_post_with_ip($url, $post_data = null, $ip = '', $header = array())
 			}
 			$url = trim($matches[1]);
 			$loop_count++;
-			return curl_post_with_ip($url, $post_data, $ip, $header);
+			return http_post_with_ip($url, $post_data, $ip, $header);
 		}
 
 		$loop_count = 0;
