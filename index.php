@@ -173,14 +173,6 @@ function ErrorTemplate($args) {
 	echo $args;
 }
 
-/* 运行框架
-Run Framework
- */
-run();
-
-/* 下面为可选函数区，可根据实际需求删减 */
-/* Options Functions, you can delete what you doesn't like */
-
 /* 数据库类 / Database class */
 interface iDB {
 	public function connect();
@@ -215,7 +207,7 @@ class DB implements iDB {
 	}
 
 	public function connect() {
-		$class_name = $this->config['type'] ? $this->config['db']['type'] : 'mysql';
+		$class_name = $this->config['type'] ? $this->config['type'] : 'mysql';
 		$class_name = ucfirst($class_name) . 'DB';
 		$this->db_object = new $class_name($this->config);
 		$this->db_object->connect();
@@ -428,6 +420,14 @@ class PgsqlDB implements iDB {
 		}
 	}
 }
+
+/* 运行框架
+Run Framework
+ */
+run();
+
+/* 下面为可选函数区，可根据实际需求删减 */
+/* Options Functions, you can delete what you doesn't like */
 
 /**
  * SESSION操作函数 / The Operator function with session
