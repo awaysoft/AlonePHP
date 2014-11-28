@@ -10,6 +10,20 @@
 define('ALONE_ROOT', dirname(__FILE__));
 define('IS_CLI', php_sapi_name() === 'cli');
 
+$config = array(
+	'db' => array(
+		'type' => 'mysql', /* DB type, like mysql, pgsql, sqlite */
+		'host' => 'localhost',
+
+		'port' => '3306',
+		'user' => '',
+		'pass' => '',
+		'dbname' => '',
+		'charset' => 'utf-8',
+		'dbfile' => '', /* sqlite or file database using */
+	),
+);
+
 /**
  * 默认控制器
  * Default Controller
@@ -166,6 +180,254 @@ run();
 
 /* 下面为可选函数区，可根据实际需求删减 */
 /* Options Functions, you can delete what you doesn't like */
+
+/* 数据库类 / Database class */
+interface iDB {
+	public function connect();
+	public function close();
+	public function fetch_array($result);
+	public function fetch_object($result);
+	public function fetch_all($result);
+	public function result_seek($result, $seek);
+	public function escape_string($string);
+	public function free_result($result);
+	public function query($sql);
+	public function insert_id();
+	public function error();
+}
+
+class DB implements iDB {
+	private $config = '';
+	private $db_object = null;
+
+	public function __construct($config_data = null) {
+		if (!$config_data) {
+			global $config;
+			$config_data = $config['db'];
+		}
+		$this->config = $config_data;
+	}
+
+	public function __destruct() {
+		if ($this->db_object) {
+			$this->db_object = null;
+		}
+	}
+
+	public function connect() {
+		$class_name = $this->config['type'] ? $this->config['db']['type'] : 'mysql';
+		$class_name = ucfirst($class_name) . 'DB';
+		$this->db_object = new $class_name($this->config);
+		$this->db_object->connect();
+	}
+
+	public function close() {
+		if ($this->db_object) {
+			$this->db_object->close();
+		}
+		$this->db_object = null;
+	}
+
+	public function fetch_array($result) {
+		if ($this->db_object) {
+			return $this->db_object->fetch_array($result);
+		}
+	}
+
+	public function fetch_object($result) {
+		if ($this->db_object) {
+			return $this->db_object->fetch_object($result);
+		}
+	}
+
+	public function fetch_all($result) {
+		if ($this->db_object) {
+			return $this->db_object->fetch_all($result);
+		}
+	}
+
+	public function result_seek($result, $seek) {
+		if ($this->db_object) {
+			return $this->db_object->result_seek($result, $seek);
+		}
+	}
+
+	public function escape_string($string) {
+		if ($this->db_object) {
+			return $this->db_object->escape_string($string);
+		}
+	}
+
+	public function free_result($result) {
+		if ($this->db_object) {
+			return $this->db_object->free_result($result);
+		}
+	}
+
+	public function query($sql) {
+		if ($this->db_object) {
+			return $this->db_object->query($sql);
+		}
+	}
+
+	public function insert_id() {
+		if ($this->db_object) {
+			return $this->db_object->insert_id();
+		}
+	}
+
+	public function error() {
+		if ($this->db_object) {
+			return $this->db_object->error();
+		}
+	}
+}
+
+class MysqlDB implements iDB {
+	private $config = '';
+	private $conn = null;
+
+	public function __construct($config_data) {
+		$this->config = $config_data;
+	}
+
+	public function __destruct() {
+		$this->close();
+	}
+
+	public function connect() {
+		$config = $this->config;
+		$this->conn = mysql_connect("{$config['host']}:{$config['port']}", $config['user'], $config['pass'], true);
+		if ($this->conn) {
+			mysql_select_db($config['dbname']);
+			return true;
+		}
+		return false;
+	}
+
+	public function close() {
+		if ($this->conn) {
+			mysql_close($this->conn);
+		}
+	}
+
+	public function fetch_array($result) {
+		return mysql_fetch_array($this->conn);
+	}
+
+	public function fetch_object($result) {
+		return mysql_fetch_object($this->conn);
+	}
+
+	public function fetch_all($result) {
+		$rs = array();
+		while (($row = mysql_fetch_array($result))) {
+			array_push($rs, $row);
+		}
+		return $rs;
+	}
+
+	public function result_seek($result, $seek) {
+		return mysql_data_seek($result, $seek);
+	}
+
+	public function escape_string($string) {
+		if ($this->conn) {
+			return mysql_real_escape_string($string, $this->conn);
+		} else {
+			return mysql_escape_string($string);
+		}
+	}
+
+	public function free_result($result) {
+		return mysql_free_result($result);
+	}
+
+	public function query($sql) {
+		if ($this->conn) {
+			return mysql_query($sql, $this->conn);
+		}
+	}
+
+	public function insert_id() {
+		if ($this->conn) {
+			return mysql_insert_id($this->conn);
+		}
+	}
+
+	public function error() {
+		if ($this->conn) {
+			return mysql_error($this->conn);
+		}
+	}
+}
+
+class PgsqlDB implements iDB {
+	private $config = '';
+	private $conn = null;
+
+	public function __construct($config_data) {
+		$this->config = $config_data;
+	}
+
+	public function __destruct() {
+		$this->close();
+	}
+
+	public function connect() {
+		$config = $this->config;
+		$this->conn = pg_connect("host={$config['host']} port={$config['port']} dbname={$config['dbname']} user={$config['user']} password={$config['pass']}");
+		return ($this->conn ? true : false);
+	}
+
+	public function close() {
+		if ($this->conn) {
+			pg_close($this->conn);
+		}
+	}
+
+	public function fetch_array($result) {
+		return pg_fetch_array($this->conn);
+	}
+
+	public function fetch_object($result) {
+		return pg_fetch_object($this->conn);
+	}
+
+	public function fetch_all($result) {
+		return pg_fetch_all($result);
+	}
+
+	public function result_seek($result, $seek) {
+		return pg_result_seek($result, $seek);
+	}
+
+	public function escape_string($string) {
+		return pg_escape_string($string);
+	}
+
+	public function free_result($result) {
+		return pg_free_result($result);
+	}
+
+	public function query($sql) {
+		if ($this->conn) {
+			return pg_query($this->conn, $sql);
+		}
+	}
+
+	public function insert_id() {
+		if ($this->conn) {
+			return pg_last_oid($this->conn);
+		}
+	}
+
+	public function error() {
+		if ($this->conn) {
+			return pg_last_error($this->conn);
+		}
+	}
+}
 
 /**
  * SESSION操作函数 / The Operator function with session
