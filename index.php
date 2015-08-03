@@ -10,14 +10,14 @@
 define('ALONE_ROOT', dirname(__FILE__));
 define('IS_CLI', php_sapi_name() === 'cli');
 
-$config = array(
-	'db' => array(
+$config = [
+	'db' => [
 		'dsn' => 'mysql:host=localhost;dbname=test',
         'user' => 'test1',
         'pass' => 'test',
-        'driver_options' => []
-	),
-);
+        'driver_options' => [PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES 'utf8';"]
+	],
+];
 
 /**
  * 默认控制器
@@ -180,7 +180,7 @@ class Db extends PDO{
     public function __construct($configNew = null) {
         if (!$configNew) {
         	global $config;
-            $configNew = $config;
+            $configNew = $config['db'];
         }
         $this->config = array_merge($this->config, $configNew);
         try {
@@ -212,7 +212,7 @@ run();
 function session($name, $value = null) {
 	static $is_init = false;
 	static $cli_filename = '';
-	static $session_obj = array();
+	static $session_obj = [];
 	if (!$is_init) {
 		/* CLI 模式下session存放在系统临时目录中，以文件方式存放 */
 		if (IS_CLI) {
@@ -222,7 +222,7 @@ function session($name, $value = null) {
 				$content = file_get_contents($cli_filename);
 				$session_obj = unserialize($content);
 				if (!is_array($session_obj)) {
-					$session_obj = array();
+					$session_obj = [];
 				}
 			}
 		} else {
@@ -233,7 +233,7 @@ function session($name, $value = null) {
 	if ($value === null) {
 		return IS_CLI ? $session_obj[$name] : $_SESSION[$name];
 	} elseif ($value === '[destroy]') {
-		IS_CLI ? ($session_obj = array()) : session_destroy();
+		IS_CLI ? ($session_obj = []) : session_destroy();
 	} elseif ($value === '[delete]') {
 		if (IS_CLI) {
 			unset($session_obj[$name]);
@@ -354,7 +354,7 @@ function verify_code($img_type = 'jpeg', $width = 60, $height = 24, $len = 4, $f
  * @param int $timeout 超时时间
  * @return string|boolean 返回的内容,发生错误返回false
  */
-function curl_get($url, $header = array(), $timeout = 5) {
+function curl_get($url, $header = [], $timeout = 5) {
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $url);
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
@@ -374,7 +374,7 @@ function curl_get($url, $header = array(), $timeout = 5) {
  * @param int $timeout 超时时间
  * @return string|boolean 返回的内容,发生错误返回false
  */
-function curl_post($url, $post_data = array(), $header = array(), $timeout = 5) {
+function curl_post($url, $post_data = [], $header = [], $timeout = 5) {
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $url);
 	curl_setopt($ch, CURLOPT_POST, 1);
@@ -409,7 +409,7 @@ function curl_redir_exec($ch) {
 
 	$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 	if ($http_code == 301 || $http_code == 302) {
-		$matches = array();
+		$matches = [];
 		preg_match('/Location:(.*?)\n/', $header, $matches);
 		$url = @parse_url(trim(array_pop($matches)));
 		if (!$url) {
@@ -432,7 +432,7 @@ function curl_redir_exec($ch) {
  * @param array $header 需要添加的其它header参数
  * @return string|boolean 返回获取的内容，访问失败返回false
  */
-function http_get_with_ip($url, $ip = '', $header = array()) {
+function http_get_with_ip($url, $ip = '', $header = []) {
 	return http_post_with_ip($url, null, $ip, $header);
 }
 
@@ -443,7 +443,7 @@ function http_get_with_ip($url, $ip = '', $header = array()) {
  * @param array $header 需要添加的其它header参数
  * @return string|boolean 返回获取的内容，访问失败返回false
  */
-function http_post_with_ip($url, $post_data = null, $ip = '', $header = array()) {
+function http_post_with_ip($url, $post_data = null, $ip = '', $header = []) {
 	/* 最大循环跳转次数 */
 	$loop_max_count = 5;
 
@@ -476,11 +476,11 @@ function http_post_with_ip($url, $post_data = null, $ip = '', $header = array())
 	} else {
 		$out = (is_array($post_data) ? "POST" : "GET") . " {$url} HTTP/1.0\r\n";
 		/* 最终的header数组 */
-		$header_result = array();
+		$header_result = [];
 		$header_result['Host'] = $host;
 		/* 处理post数据 */
 		if (is_array($post_data)) {
-			$post_values = array();
+			$post_values = [];
 			foreach ($post_data as $key => $value) {
 				array_push($post_values, urlencode($key) . "=" . urlencode($value));
 			}
