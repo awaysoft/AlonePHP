@@ -10,14 +10,16 @@
 define('ALONE_ROOT', dirname(__FILE__));
 define('IS_CLI', php_sapi_name() === 'cli');
 
-$config = [
-	'db' => [
-		'dsn' => 'mysql:host=localhost;dbname=test',
-        'user' => 'test1',
-        'pass' => 'test',
-        'driver_options' => [PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES 'utf8';"]
-	],
-];
+if (!$config) {
+	$config = [
+		'db' => [
+			'dsn' => 'mysql:host=localhost;dbname=test',
+			'user' => 'test1',
+			'pass' => 'test',
+			'driver_options' => [PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES 'utf8';"]
+		],
+	];
+}
 
 /**
  * 默认控制器
@@ -188,6 +190,65 @@ class Db extends PDO{
         } catch (Exception $e) {
             trigger_error('数据库连接失败：' . $e->getMessage(), E_USER_ERROR);
         }
+    }
+
+	public function update($table, $where, $data) {
+        $sqlTemp = '';
+        foreach ($data as $key => $value) {
+            if ($sqlTemp !== '') {
+                $sqlTemp .= ',';
+            }
+            $sqlTemp .= "`{$key}` = :{$key}";
+        }
+
+        $sql = "UPDATE `{$table}` SET {$sqlTemp} WHERE {$where}";
+        $stmt = $this->prepare($sql);
+        foreach ($data as $key => $value) {
+            $stmt->bindValue(":{$key}", $value);
+        }
+        if ($stmt->execute() === false) {
+            return false;
+        }
+        return $stmt->rowCount();
+    }
+
+    public function add($table, $data) {
+        $fields = '';
+        $values = '';
+        foreach ($data as $key => $value) {
+            if ($fields !== '') {
+                $fields .= ',';
+                $values .= ',';
+            }
+            $fields .= "`{$key}`";
+            $values .= ":{$key}";
+        }
+
+        $sql = "INSERT INTO `{$table}` ({$fields}) VALUES ({$values})";
+        $stmt = $this->prepare($sql);
+        foreach ($data as $key => $value) {
+            $stmt->bindValue(":{$key}", $value);
+        }
+        if ($stmt->execute() === false) {
+            return false;
+        }
+        return $this->lastInsertId();
+    }
+
+    public function getOne($sql) {
+        $stmt = $this->query($sql);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    public function getAll($sql) {
+        $stmt = $this->query($sql);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function count($table, $where) {
+        $sql = "SELECT count(*) as count FROM `{$table}` WHERE {$where}";
+        $result = $this->getOne($sql);
+        return $result['count'];
     }
 }
 
