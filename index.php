@@ -25,8 +25,8 @@ if (!$config) {
  * 默认控制器
  * Default Controller
  */
-if (!function_exists('IndexController')) {
-	function IndexController() {
+if (!function_exists('indexController')) {
+	function indexController() {
 		template('Index');
 	}
 }
@@ -35,8 +35,8 @@ if (!function_exists('IndexController')) {
  * 默认控制器模板
  * Default Controller Template
  */
-if (!function_exists('IndexTemplate')) {
-	function IndexTemplate($args) {
+if (!function_exists('indexTemplate')) {
+	function indexTemplate($args) {
 		echo IS_CLI ? "欢迎使用AlonePHP框架\n" : '<meta charset="utf-8">欢迎使用AlonePHP框架';
 	}
 }
@@ -68,7 +68,7 @@ function run() {
 		$controller = get('c');
 	}
 	if (!$controller) {
-		$controller = 'Index';
+		$controller = 'index';
 	}
 
 	/* 移交控制权到相应的控制器 */
@@ -139,7 +139,7 @@ function param_get($index) {
  * @param string $default 默认值/Default Value
  * @return string
  */
-function get($name, $filter = 'htmlspecialchars', $default = '') {
+function get($name, $default = '', $filter = 'htmlspecialchars') {
 	if (!isset($_GET[$name])) {
 		$result = $default;
 	} else {
@@ -154,13 +154,22 @@ function get($name, $filter = 'htmlspecialchars', $default = '') {
  * @param string $default 默认值/Default Value
  * @return string
  */
-function post($name, $filter = 'htmlspecialchars', $default = '') {
+function post($name, $default = '', $filter = 'htmlspecialchars') {
 	if (!isset($_POST[$name])) {
 		$result = $default;
 	} else {
 		$result = $_POST[$name];
 	}
 	return $filter($result);
+}
+
+/** 获取JSON格式的Post数据
+ * @return array
+ */
+function jsonPost() {
+    $data = file_get_contents('php://input');
+    $obj = json_decode($data, TRUE);
+    return $obj;
 }
 
 /* 默认输出错误信息函数
@@ -178,6 +187,9 @@ class Db extends PDO{
         'pass' => '',
         'driver_options' => []
     ];
+
+    private $errorCode = 0;
+    private $errorInfo = [];
 
     public function __construct($configNew = null) {
         if (!$configNew) {
@@ -235,20 +247,60 @@ class Db extends PDO{
         return $this->lastInsertId();
     }
 
-    public function getOne($sql) {
-        $stmt = $this->query($sql);
+    public function delete($table, $where, $data) {
+        $sql = "DELETE FROM `{$table}` WHERE {$where}";
+        $stmt = $this->prepare($sql);
+        foreach ($data as $key => $value) {
+            $stmt->bindValue(":{$key}", $value);
+        }
+        if ($stmt->execute() === false) {
+            return false;
+        }
+        return $stmt->rowCount();
+    }
+
+    public function getOne($sql, $data = []) {
+        if ($data) {
+            $stmt = $this->prepare($sql);
+            $stmt->execute($data);
+        } else {
+            $stmt = $this->query($sql);
+        }
+        if ($stmt === false) {
+            return [];
+        }
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function getAll($sql) {
-        $stmt = $this->query($sql);
+    public function getAll($sql, $data = []) {
+        if ($data) {
+            $stmt = $this->prepare($sql);
+            $stmt->execute($data);
+        } else {
+            $stmt = $this->query($sql);
+        }
+        if ($stmt === false) {
+            return [];
+        }
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
     }
 
-    public function count($table, $where) {
-        $sql = "SELECT count(*) as count FROM `{$table}` WHERE {$where}";
-        $result = $this->getOne($sql);
+    public function count($table, $where = '', $data = []) {
+        $sql = "SELECT count(*) as count FROM `{$table}`";
+        if ($where !== '') {
+            $sql .= " WHERE {$where}";
+        }
+        $result = $this->getOne($sql, $data);
         return $result['count'];
+    }
+
+    public function stateErrorCode() {
+        return $this->errorCode;
+    }
+
+    public function stateErrorInfo() {
+        return $this->errorInfo;
     }
 }
 
@@ -290,11 +342,11 @@ function session($name, $value = null) {
 			session_start();
 		}
 		$is_init = true;
-	}
-	if ($value === null) {
-		return IS_CLI ? $session_obj[$name] : $_SESSION[$name];
-	} elseif ($value === '[destroy]') {
+    }
+    if ($name === '[destroy]') {
 		IS_CLI ? ($session_obj = []) : session_destroy();
+	} elseif ($value === null) {
+		return IS_CLI ? $session_obj[$name] : $_SESSION[$name];
 	} elseif ($value === '[delete]') {
 		if (IS_CLI) {
 			unset($session_obj[$name]);
